@@ -1,0 +1,3 @@
+pip install python-dotenv --user
+pip install boto3 --user
+pip install requests-aws4auth --user
