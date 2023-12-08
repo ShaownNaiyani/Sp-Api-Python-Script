@@ -12,6 +12,7 @@ import get_access_token
 import get_temp_creds
 import get_catalog_item
 import get_amazon_fba_fees
+import get_product_price
 from sp_api.api import Sales
 from sp_api.base import Marketplaces
 from sp_api.base import Granularity
@@ -37,8 +38,8 @@ def update_every_one_hour():
         "AmazonFBAEstimatedFees": "",
         "EstimatedSalesRank": "",
         "AmazonPrice": "",
+        "NumberOfSellersOnTheListing": "",
     }
-
 
     try:
         temp_credentials = get_temp_creds.get_temp_credentials()
@@ -81,22 +82,27 @@ def update_every_one_hour():
 
         if (list_price != -1):
             try:
-                marketplace_id = "A2EUQ1WTGCTBG2"
-                asin = "B07BF2CD75"
-                access_token = token_data["access_token"]
-                credentials = temp_credentials
                 result = get_amazon_fba_fees.get_amazon_fba_fees(                  # Product fees api call here
                     asin, list_price, access_token, credentials)
-            
+
                 leads_data["AmazonFBAEstimatedFees"] = result["payload"]["FeesEstimateResult"]["FeesEstimate"]["TotalFeesEstimate"]["Amount"]
-                
+
             except Exception as e:
                 print(f"Error")
+
+        try:
+            get_price = get_product_price.get_product_price(
+                marketplace_id, asin, access_token, credentials)
+            leads_data["NumberOfSellersOnTheListing"] = len(
+                get_price["payload"]["Offers"])
+
+        except Exception as e:
+            print(f"Error:{e}")
 
         asin_exist = leads_collection .find_one({"_id": leads_data["_id"]})
 
         if (asin_exist is not None):
-           
+
             filter_condition = {"_id": leads_data["_id"]}
 
             update_data = {"$set": {
@@ -104,7 +110,8 @@ def update_every_one_hour():
                 "ProductImage": leads_data["ProductImage"],
                 "EstimatedSalesRank": leads_data["EstimatedSalesRank"],
                 "AmazonPrice": leads_data["AmazonPrice"],
-                "AmazonFBAEstimatedFees": leads_data["AmazonFBAEstimatedFees"]
+                "AmazonFBAEstimatedFees": leads_data["AmazonFBAEstimatedFees"],
+                "NumberOfSellersOnTheListing": leads_data["NumberOfSellersOnTheListing"]
             }}
 
             result = leads_collection.update_one(filter_condition, update_data)
